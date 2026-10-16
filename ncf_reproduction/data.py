@@ -1,5 +1,6 @@
 import os
 import ast
+from xml.sax.handler import feature_namespace_prefixes
 from networkx import neighbors
 from pyparsing import line
 import torch
@@ -76,3 +77,61 @@ def load_data(base_dir, dataset="ml-1m"):
     logger.info(f"train_mat: {train_mat.shape}")
 
     return train_data, test_data, user_num, item_num, train_mat
+
+
+class NCFDataset(Dataset):
+    def __init__(self, features, num_item, train_mat=None, num_ng=0, is_training=None):
+        """_summary_
+
+        Args:
+            features (_type_): interactionした[user,item]のリスト？
+            num_item (_type_): _description_
+            train_mat (_type_, optional): _description_. Defaults to None.
+            num_ng (int, optional): 負例の個数？. Defaults to 0.
+            is_training (_type_, optional): _description_. Defaults to None.
+        """
+        super().__init__()
+        self.features_ps = features
+        self.num_item = num_item
+        self.train_mat = train_mat
+        self.num_ng = num_ng
+        self.is_training = is_training
+        # HACK: test時はlabelは使わないが、user,item,labelというインターフェースを共通にするためにtest時はダミーlabelを使う
+        self.labels = [0 for _ in range(len(features))]
+
+    def ng_sample(self):
+        # HACK: 参考実装がややわかりにくいので要修正
+        """testデータには負例が最初からセットになっているがtrainではここで作成する。エポックごとに呼ぶことで異なる負例を追加する想定
+
+        Returns:
+            _type_: _description_
+        """
+        assert self.is_training, "test時は負例のサンプリングは不要です"
+
+        self.features_ng = []
+        for x in self.features_ps:
+            user = x[0]
+            # 設定している負例の個数分ループ
+            for t in range(self.num_ng):
+                item_id = np.random.randint(self.num_item)
+                # itemのidをランダムに選択して疎行列に含まれていなかったらinteractionしていないので負例として採用する
+                while (user, item_id) in self.train_mat:
+                    item_id = np.random.randint(self.num_item)
+                self.features_ng.append([user, item_id])
+        labels_ps = [1 for _ in range(len(self.features_ps))]
+        labels_ng = [0 for _ in range(len(self.features_ng))]
+
+        self.features_full = self.features_ps + self.features_ng
+        self.labels_full = labels_ps + labels_ng
+
+    def __len__(self):
+        return (self.num_ng + 1) * len(self.labels)
+
+    def __getitem__(self, idx):
+        features = self.features_full if self.is_training else self.features_ps
+        labels = self.labels_full if self.is_training else self.labels
+
+        user = features[idx][0]
+        item = features[idx][1]
+        label = labels[idx]
+        return user, item, label
