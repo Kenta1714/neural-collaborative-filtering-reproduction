@@ -51,8 +51,8 @@ def load_data(base_dir, dataset="ml-1m"):
     # user数 × item数の疎行列を作成
     train_mat = sp.dok_matrix((user_num, item_num))
     # train_dataの各行が0列目のuser idと1列目のitem idのinteractionを表すのでそこを1にする
-    for x in train_data:
-        train_mat[x[0], x[1]] = 1.0
+    for user_id, item_id in train_data:
+        train_mat[user_id, item_id] = 1.0
 
     # test_dataについては概ね参考リポジトリ通り
     test_data = []
@@ -62,11 +62,11 @@ def load_data(base_dir, dataset="ml-1m"):
             arr = line.split("\t")
             # 0列目のみuser,itemのタプルが文字列として入っているのでuserとitemを取り出す
             # 参考リポジトリはeval()を使用していたがコードを実行する必要がないのでast.literal_evalとした。
-            user, item = ast.literal_eval(arr[0])
-            test_data.append([user, item])
+            user_id, pos_item_id = ast.literal_eval(arr[0])
+            test_data.append([user_id, pos_item_id])
             # HACK: 1列目以降は負例itemなので、user,負例itemを99行分作成。後で100件を塊で取り出す想定なのでフラグ列が用意されていない
             for neg_item_id in arr[1:]:
-                test_data.append([user, int(neg_item_id)])
+                test_data.append([user_id, int(neg_item_id)])
             line = fd.readline()
 
     # 形状の確認
@@ -96,28 +96,24 @@ class NCFDataset(Dataset):
         self.train_mat = train_mat
         self.num_ng = num_ng
         self.is_training = is_training
-        # HACK: test時はlabelは使わないが、user,item,labelというインターフェースを共通にするためにtest時はダミーlabelを使う
+        # HACK: test時はlabelは使わないが、user,item,labelというインターフェースを共通にするためにtest時はこれがダミーlabelとして返される
         self.labels = [0 for _ in range(len(features))]
 
-    def ng_sample(self):
-        # HACK: 参考実装がややわかりにくいので要修正
-        """testデータには負例が最初からセットになっているがtrainではここで作成する。エポックごとに呼ぶことで異なる負例を追加する想定
-
-        Returns:
-            _type_: _description_
-        """
+    def sample_negatives(self):
+        # HACK: 参考実装がややわかりにくいので要修正。また公式実装も含めて重複が許容されていることに注意。また、test positiveを負例としてサンプリングする可能性もある。（ただしこれを除外するのは）
+        """testデータには負例が最初からセットになっているがtrainではここで作成する。エポックごとに呼ぶことで異なる負例を追加する想定"""
         assert self.is_training, "test時は負例のサンプリングは不要です"
 
         self.features_ng = []
-        for x in self.features_ps:
-            user = x[0]
+        for user_id, _ in self.features_ps:
             # 設定している負例の個数分ループ
-            for t in range(self.num_ng):
-                item_id = np.random.randint(self.num_item)
+            for _ in range(self.num_ng):
                 # itemのidをランダムに選択して疎行列に含まれていなかったらinteractionしていないので負例として採用する
-                while (user, item_id) in self.train_mat:
+                item_id = np.random.randint(self.num_item)
+                # dok_matrixでは内部で{(m,n):1.0}のような辞書で値を保持しているためこのようなキーの存在判定が可能。train_mat[user,item]!=0と同じ挙動
+                while (user_id, item_id) in self.train_mat:
                     item_id = np.random.randint(self.num_item)
-                self.features_ng.append([user, item_id])
+                self.features_ng.append([user_id, item_id])
         labels_ps = [1 for _ in range(len(self.features_ps))]
         labels_ng = [0 for _ in range(len(self.features_ng))]
 
