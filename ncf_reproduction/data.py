@@ -1,8 +1,10 @@
 import os
 import ast
+from unittest import TestLoader
 from xml.sax.handler import feature_namespace_prefixes
 from networkx import neighbors
 from pyparsing import line
+import test
 import torch
 
 
@@ -80,19 +82,19 @@ def load_data(base_dir, dataset="ml-1m"):
 
 
 class NCFDataset(Dataset):
-    def __init__(self, features, num_item, train_mat=None, num_ng=0, is_training=None):
+    def __init__(self, features, item_num, train_mat=None, num_ng=0, is_training=None):
         """_summary_
 
         Args:
-            features (_type_): interactionした[user,item]のリスト？
-            num_item (_type_): _description_
+            features (_type_): interactionした[user,item]のリスト
+            item_num (_type_): _description_
             train_mat (_type_, optional): _description_. Defaults to None.
             num_ng (int, optional): 負例の個数？. Defaults to 0.
             is_training (_type_, optional): _description_. Defaults to None.
         """
         super().__init__()
         self.features_ps = features
-        self.num_item = num_item
+        self.item_num = item_num
         self.train_mat = train_mat
         self.num_ng = num_ng
         self.is_training = is_training
@@ -109,10 +111,10 @@ class NCFDataset(Dataset):
             # 設定している負例の個数分ループ
             for _ in range(self.num_ng):
                 # itemのidをランダムに選択して疎行列に含まれていなかったらinteractionしていないので負例として採用する
-                item_id = np.random.randint(self.num_item)
+                item_id = np.random.randint(self.item_num)
                 # dok_matrixでは内部で{(m,n):1.0}のような辞書で値を保持しているためこのようなキーの存在判定が可能。train_mat[user,item]!=0と同じ挙動
                 while (user_id, item_id) in self.train_mat:
-                    item_id = np.random.randint(self.num_item)
+                    item_id = np.random.randint(self.item_num)
                 self.features_ng.append([user_id, item_id])
         labels_ps = [1 for _ in range(len(self.features_ps))]
         labels_ng = [0 for _ in range(len(self.features_ng))]
@@ -131,3 +133,36 @@ class NCFDataset(Dataset):
         item = features[idx][1]
         label = labels[idx]
         return user, item, label
+
+
+def build_dataloaders(base_dir, batch_size, num_neg, num_workers):
+    train_data, test_data, user_num, item_num, train_mat = load_data(
+        base_dir=base_dir, dataset="ml-1m"
+    )
+    train_dataset = NCFDataset(
+        features=train_data,
+        item_num=item_num,
+        train_mat=train_mat,
+        num_ng=num_neg,
+        is_training=True,
+    )
+    test_dataset = NCFDataset(
+        features=test_data,
+        item_num=item_num,
+        train_mat=train_mat,
+        # TODO: 元々testには負例が含まれているから0？
+        num_ng=0,
+        is_training=False,
+    )
+
+    # ローダー作成
+    train_loader = DataLoader(
+        train_dataset,
+        batch_size=batch_size,
+        shuffle=True,
+        num_workers=num_workers,
+    )
+    test_loader = DataLoader(
+        test_dataset, batch_size=batch_size, shuffle=False, num_workers=0
+    )
+    return train_loader, test_loader
