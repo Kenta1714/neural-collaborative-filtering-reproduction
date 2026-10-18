@@ -165,4 +165,4 @@ def build_dataloaders(base_dir, batch_size, num_neg, num_workers):
     test_loader = DataLoader(
         test_dataset, batch_size=batch_size, shuffle=False, num_workers=0
     )
-    return train_loader, test_loader
+    return (train_loader, test_loader, user_num, item_num)
