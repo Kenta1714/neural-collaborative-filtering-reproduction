@@ -1,5 +1,3 @@
-from turtle import forward
-
 from sympy import factor
 import torch
 import torch.nn as nn
@@ -122,11 +120,26 @@ class NeuMF(nn.Module):
         nn.init.kaiming_uniform_(self.predict_layer.weight, a=1, nonlinearity="sigmoid")
         nn.init.zeros_(self.predict_layer.bias)
 
-    def load_pretrained(self, gmf: GMF, mlp: MLP):
+    @torch.no_grad()
+    def load_pretrained(self, gmf: GMF, mlp: MLP, alpha=0.5):
         # GMFとMLPのencoderをコピーする
-        self.gmf_encoder.load_state_dict(gmf.encoder.state_dict())
-        self.mlp_encoder.load_state_dict(mlp.encoder.state_dict())
+        self.gmf_encoder.load_state_dict(gmf.gmf_encoder.state_dict())
+        self.mlp_encoder.load_state_dict(mlp.mlp_encoder.state_dict())
+
+        # predict_layerはそれぞれをα倍、1-α倍する。デフォルトは0.5（S4.1 Parameter Settings）
+        new_predict_layer_weight = torch.cat(
+            (alpha * gmf.predict_layer.weight, (1 - alpha) * mlp.predict_layer.weight),
+            dim=1,
+        )
+
+        new_predict_layer_bias = (
+            alpha * gmf.predict_layer.bias + (1 - alpha) * mlp.predict_layer.bias
+        )
+        self.predict_layer.weight.copy_(new_predict_layer_weight)
+        self.predict_layer.bias.copy_(new_predict_layer_bias)
 
     def forward(self, user, item):
-        concated = torch.cat((GMFEncoder(user, item), MLPEncoder(user, item)), -1)
+        concated = torch.cat(
+            (self.gmf_encoder(user, item), self.mlp_encoder(user, item)), -1
+        )
         return self.predict_layer(concated).view(-1)
