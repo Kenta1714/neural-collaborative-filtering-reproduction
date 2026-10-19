@@ -134,7 +134,7 @@ class NCFDataset(Dataset):
         return user, item, label
 
 
-def build_dataloaders(base_dir, batch_size, num_neg, num_workers):
+def build_dataloaders(base_dir, batch_size, num_neg, num_workers, generator):
     train_data, test_data, user_num, item_num, train_mat = load_data(
         base_dir=base_dir, dataset="ml-1m"
     )
@@ -149,7 +149,7 @@ def build_dataloaders(base_dir, batch_size, num_neg, num_workers):
         features=test_data,
         item_num=item_num,
         train_mat=train_mat,
-        # TODO: 元々testには負例が含まれているから0？
+        # 元々testには負例が含まれているから追加でサンプリングする負例数num_ngは0
         num_ng=0,
         is_training=False,
     )
@@ -160,7 +160,14 @@ def build_dataloaders(base_dir, batch_size, num_neg, num_workers):
         batch_size=batch_size,
         shuffle=True,
         num_workers=num_workers,
+        generator=generator,
     )
     # test_dataについてはバッチを100個ずつ取る前提であることに注意
-    test_loader = DataLoader(test_dataset, batch_size=100, shuffle=False, num_workers=0)
+    test_loader = DataLoader(
+        test_dataset,
+        batch_size=100,
+        shuffle=False,
+        num_workers=0,
+        generator=generator,
+    )
     return (train_loader, test_loader, user_num, item_num)
