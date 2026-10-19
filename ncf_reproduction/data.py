@@ -8,7 +8,6 @@ import test
 import torch
 
 
-import torchvision.transforms as transforms
 from torch.utils.data import DataLoader, Dataset
 
 import numpy as np
@@ -72,10 +71,10 @@ def load_data(base_dir, dataset="ml-1m"):
             line = fd.readline()
 
     # 形状の確認
-    logger.info("データの読み込みと加工完了。shapeは下記の通り。")
-    logger.info(f"train_data: {train_data.shape}")
-    logger.info(f"test_data: {test_data.shape}")
-    logger.info(f"user_num: {user_num.shape}")
+    logger.info("データの読み込みと加工完了。")
+    logger.info(f"train_data: {len(train_data)}")
+    logger.info(f"test_data: {len(test_data)}")
+    logger.info(f"user_num: {user_num}")
     logger.info(f"train_mat: {train_mat.shape}")
 
     return train_data, test_data, user_num, item_num, train_mat
@@ -162,7 +161,6 @@ def build_dataloaders(base_dir, batch_size, num_neg, num_workers):
         shuffle=True,
         num_workers=num_workers,
     )
-    test_loader = DataLoader(
-        test_dataset, batch_size=batch_size, shuffle=False, num_workers=0
-    )
+    # test_dataについてはバッチを100個ずつ取る前提であることに注意
+    test_loader = DataLoader(test_dataset, batch_size=100, shuffle=False, num_workers=0)
     return (train_loader, test_loader, user_num, item_num)
