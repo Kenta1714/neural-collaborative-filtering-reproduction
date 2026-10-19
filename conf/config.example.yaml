@@ -1,0 +1,72 @@
+seed: 42
+
+data: 
+  base_dir: 
+  batch_size: 256
+  num_workers: 4
+
+model:
+  model_name: "NeuMF"
+  use_pretrain: True
+  gmf_checkpoint_path: 
+  mlp_checkpoint_path: 
+  dropout: 0.0
+  factor_num: 32
+  num_layers: 3
+
+
+optimizer:
+  lr: 0.001
+
+training:
+  epochs: 20
+  num_ng: 4
+
+evaluate:
+  top_k: 10
+
+output:
+  # 下記のようにしただけではhydraの出力ディレクトリは変わらないことに注意。あくまでhydra:run:dirで管理している。
+  root_dir: 
+
+checkpoint: 
+  monitor: val/hr
+  mode: max
+  filename: checkpoint.pt
+
+
+# hydraがカレントディレクトリを勝手に出力ディレクトリに変えないようにする設定
+hydra:
+  run:
+    dir: ${output.root_dir}/${now:%Y-%m-%d}/${now:%H-%M-%S}
+  job:
+    chdir: false
+
+
+# 下記よりwandbの設定
+wandb:
+  # そもそもwandbを使用するかの設定？
+  enabled: true
+
+  # wandb上のプロジェクト名
+  project: dl-paper-reproductions
+
+  # 下記はなんですか
+  entity: null
+
+  # offlineにすればローカルだけに保存できる
+  mode: online
+
+  # nullなら自動的に名前がつけられる
+  name: null
+
+  tags:
+    - ncf
+    - reproduction
+
+  # 下記はなんですか
+  watch_model: false
+  watch_log_freq: 1000
+
+  # モデルファイルをwandbにアップロードするか
+  log_model: false
