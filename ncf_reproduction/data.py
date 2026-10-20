@@ -4,7 +4,7 @@ from unittest import TestLoader
 from xml.sax.handler import feature_namespace_prefixes
 from networkx import neighbors
 from pyparsing import line
-import test
+
 import torch
 
 
@@ -21,10 +21,10 @@ logger = logging.getLogger(__name__)
 
 def load_data(base_dir, dataset="ml-1m"):
     # TODO: configに移してもいいかも
-    train_rating = os.path.join(base_dir, "Data", f"{dataset}.train.rating")
+    train_rating = os.path.join(base_dir, "data", f"{dataset}.train.rating")
     # 今回はtest.negativeの最初の列を正例として扱うのでtest_ratingは使用しない。
-    # test_rating = os.path.join(base_dir, "Data", f"{dataset}.test.rating")
-    test_negative = os.path.join(base_dir, "Data", f"{dataset}.test.negative")
+    # test_rating = os.path.join(base_dir, "data", f"{dataset}.test.rating")
+    test_negative = os.path.join(base_dir, "data", f"{dataset}.test.negative")
 
     # データはtsvファイルなのでsep="\t"で読み込む
     # また、headerなしなので自分でheaderを作成する
