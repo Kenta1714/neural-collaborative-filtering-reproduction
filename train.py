@@ -121,12 +121,13 @@ def main(cfg: DictConfig):
         # dataloaderの作成
         # --------------------------------
 
-        train_loader, test_loader, user_num, item_num = build_dataloaders(
+        train_loader, val_loader, test_loader, user_num, item_num = build_dataloaders(
             base_dir=base_dir,
             batch_size=cfg.data.batch_size,
             num_neg=cfg.training.num_ng,
             num_workers=cfg.data.num_workers,
             generator=g,
+            val_seed=cfg.seed,
         )
 
         # --------------------------------
@@ -195,8 +196,7 @@ def main(cfg: DictConfig):
         trainer = Trainer(
             model=model,
             train_loader=train_loader,
-            # 今回はvalにもtest_loaderを使用する
-            val_loader=test_loader,
+            val_loader=val_loader,
             criterion=criterion,
             optimizer=optimizer,
             device=device,
@@ -228,7 +228,6 @@ def main(cfg: DictConfig):
         )
 
         # これで最良状態になったので、これで一回evaluate
-        # 今回はval_loaderにもtest_loaderを使用しているので、test_loaderで再評価しても同じ値になる。
         test_metrics = trainer.evaluate(
             dataloader=test_loader,
             max_batches=None,
