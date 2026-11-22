@@ -223,8 +223,9 @@ def main(cfg: DictConfig):
 
         logger.info(
             "Best checkpoint loaded: "
-            f"epochs={checkpoint["epoch"]}"
-            f"val_hr={checkpoint["best_val_hr"]:.4f}%"
+            f"epoch={checkpoint['epoch']} "
+            f"val_hr={checkpoint['best_val_hr']:.4f} "
+            f"val_ndcg={checkpoint['best_val_ndcg']:.4f}"
         )
 
         # これで最良状態になったので、これで一回evaluate
@@ -233,8 +234,11 @@ def main(cfg: DictConfig):
             max_batches=None,
         )
 
-        final_test_hr = test_metrics["hr"]
-        logger.info(f"Final test error: {final_test_hr:.4f}%")
+        logger.info(
+            "Final test results: "
+            f"HR@{cfg.evaluate.top_k}={test_metrics['hr']:.4f} "
+            f"NDCG@{cfg.evaluate.top_k}={test_metrics['ndcg']:.4f}"
+        )
 
         run.summary["test/hr"] = test_metrics["hr"]
         run.summary["test/ndcg"] = test_metrics["ndcg"]

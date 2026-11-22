@@ -172,8 +172,8 @@ class Trainer:
         logger.info(
             "Best checkpoint saved: "
             f"epoch={self.epoch} "
-            f"val_hr={current_hr:.4f}%"
-            f"val_ndcg={best_ndcg:.4f}%"
+            f"val_hr={current_hr:.4f} "
+            f"val_ndcg={best_ndcg:.4f}"
         )
         return True
 
@@ -217,7 +217,9 @@ class Trainer:
                 # TODO コピペ
 
                 pbar.set_postfix(
-                    TestHR=f"{log['val/hr']:.4f}", TrainLoss=f"{log["train/loss"]:.4f}"
+                    ValHR=f"{log['val/hr']:.4f}",
+                    ValNDCG=f"{log['val/ndcg']:.4f}",
+                    TrainLoss=f"{log['train/loss']:.4f}",
                 )
 
                 logger.info(
@@ -225,8 +227,9 @@ class Trainer:
                     f"Epoch: {epoch + 1} | "
                     f"train_loss: "
                     f"{log['train/loss']:.4f} | "
-                    f"test_hr: "
+                    f"val_hr: "
                     f"{log['val/hr']:.4f} | "
+                    f"val_ndcg: {log['val/ndcg']:.4f} | "
                 )
                 # 上記までコピペ
 
