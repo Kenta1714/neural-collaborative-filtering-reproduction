@@ -1,7 +1,7 @@
 # Neural Collaborative Filtering の再現と人気度の偏りの改善
 
 MovieLens 1M で NeuMF を再現し、人気作品に偏った推薦を **Smooth xQuAD** で調整する。
-[実行結果付き notebook](notebooks/neumf_pre_full_catalog_story.ipynb) に、推論から図の作成までをまとめた。
+[分析スクリプト](popularity_reranking/neumf_popularity_bias.py) に、推論から図の作成までをまとめた。
 
 ## 再現実装にあたっての注意点
 
@@ -60,15 +60,24 @@ MovieLens 1M／6,040ユーザー／seed 42／推薦10件。同じ NeuMF に再�
 
 ## 実行方法と構成
 
-元データ `data/ml-1m.train.rating`・`data/ml-1m.test.negative` と、notebook の `run_dir` に指定した保存済みモデル・設定を配置し、上から実行する。
+元データ `data/ml-1m.train.rating`・`data/ml-1m.test.negative` と、保存済みモデル・設定を配置して実行する。
 必要なモデル入力は `NeuMF-pre/checkpoint.pt` と `.hydra/config.yaml`。データと重みは Git 管理外。
-図2枚を `docs/` に保存し、集計 CSV や推薦リストは別ファイルに保存しない。
+`--run-dir` には `NeuMF-pre/` を含むディレクトリを指定する。
+
+```bash
+python popularity_reranking/neumf_popularity_bias.py \
+  --run-dir outputs/fixed-val-20261122-154335
+```
+
+データが別の場所にある場合は、`data/` を含むディレクトリを `--data-dir` で指定する。
+`--batch-size` で推論バッチサイズを変更できる（既定値8192）。
+実行時のカレントディレクトリにかかわらず、図2枚をプロジェクトの `docs/` に保存する。
+ファイル名は `popularity_bias.png` と `reranking_results.png`。集計結果は標準出力に表示し、CSV や推薦リストは別ファイルに保存しない。
 
 - `ncf_reproduction/`：NCF の再現実装。
 - [popularity_reranking/reranking.py](popularity_reranking/reranking.py)：Smooth xQuAD と係数選択。
-- [notebooks/neumf_pre_full_catalog_story.ipynb](notebooks/neumf_pre_full_catalog_story.ipynb)：人気度の偏り → 手法 → 改善結果。
+- [popularity_reranking/neumf_popularity_bias.py](popularity_reranking/neumf_popularity_bias.py)：推論・係数選択・評価・図の保存。
 - `docs/`：README で使用する図。
 
-```bash
-uv sync --extra cu126
-```
+実行には PyTorch、NumPy、pandas、SciPy、Matplotlib、PyYAML が必要。
+既存のモデル・データ読み込みモジュールが参照する NetworkX と SymPy もインストールしておく。

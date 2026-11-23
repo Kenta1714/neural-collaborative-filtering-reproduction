@@ -1,7 +1,7 @@
 """全件推薦に Smooth xQuAD を適用するための関数。
 
 元の NCF 再現実装とは分けて、人気度補正と val での係数選択を扱う。
-推論・集計・図の保存は notebook で行う。
+推論・集計・図の保存は neumf_popularity_bias.py で行う。
 式の出典：https://cdn.aaai.org/ocs/18199/18199-78818-1-PB.pdf
 """
 
