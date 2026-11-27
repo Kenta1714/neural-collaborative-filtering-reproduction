@@ -1,0 +1,72 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv
+
+# macOS
+.DS_Store
+
+# Secrets
+.env
+.env.*
+!.env.example
+
+
+# Python
+__pycache__/
+*.py[cod]
+
+# Test / coverage
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+
+# Type checker / linter / formatter caches
+.mypy_cache/
+.pyright/
+.ruff_cache/
+
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Logs
+*.log
+logs/
+
+
+# Data
+# リポジトリ直下のdataだけを無視
+/data/
+
+
+# Experiment outputs
+/outputs/
+
+
+
+# Notebooks
+.ipynb_checkpoints/
+
+# TensorBoard
+events.out.tfevents.*
+
+# ML trackers
+wandb/
+mlruns/
+
+# Checkpoints / model weights
+checkpoints/
+*.ckpt
+*.pt
+*.pth
+*.onnx
+*.safetensors
+
