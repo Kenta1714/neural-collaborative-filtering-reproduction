@@ -18,8 +18,12 @@ dependencies = [
 # CUDAビルドの切り替え用。extraを付けない場合はPyPIの既定ホイール(cu130)が入る。
 # ドライバが古い環境では `uv sync --extra cu126` のように明示する。
 [project.optional-dependencies]
-cu126 = ["torch>=2.13.0", "torchvision>=0.28.0"]
-cu130 = ["torch>=2.13.0", "torchvision>=0.28.0"]
+cu126 = [
+    "torch>=2.13.0",
+]
+cu130 = [
+    "torch>=2.13.0",
+]
 
 [tool.uv]
 # この宣言がないと解決が1本に畳まれ、extraなしの場合まで片方のビルドが選ばれる。
@@ -38,10 +42,6 @@ explicit = true
 
 [tool.uv.sources]
 torch = [
-    { index = "pytorch-cu126", extra = "cu126" },
-    { index = "pytorch-cu130", extra = "cu130" },
-]
-torchvision = [
     { index = "pytorch-cu126", extra = "cu126" },
     { index = "pytorch-cu130", extra = "cu130" },
 ]

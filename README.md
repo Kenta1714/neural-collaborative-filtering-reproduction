@@ -60,24 +60,147 @@ MovieLens 1M／6,040ユーザー／seed 42／推薦10件。同じ NeuMF に再�
 
 ## 実行方法と構成
 
-元データ `data/ml-1m.train.rating`・`data/ml-1m.test.negative` と、保存済みモデル・設定を配置して実行する。
-必要なモデル入力は `NeuMF-pre/checkpoint.pt` と `.hydra/config.yaml`。データと重みは Git 管理外。
+以下のコマンドは、リポジトリのルートディレクトリで実行する。
+データと学習済みモデルはリポジトリに含まれないため、別途配置するか、以下の手順で学習する。
+
+### 1. 環境構築
+
+Python 3.12以降と [uv](https://docs.astral.sh/uv/) を使用する。
+依存関係は `pyproject.toml` と `uv.lock` で管理している。
+
+以下は CUDA 12.6 版の PyTorch を利用する場合の例。
+
+```bash
+uv sync --python 3.12 --extra cu126
+```
+
+以降の実行例も `--extra cu126` を指定する。
+CUDA 13.0 版を利用する場合は、環境に合わせて `cu130` に置き換える。
+
+### 2. データの準備
+
+[公式実装の Data ディレクトリ](https://github.com/hexiangnan/neural_collaborative_filtering/tree/master/Data) から、加工済み MovieLens 1M の次の2ファイルを取得し、`data/` に配置する。
+
+```text
+data/
+├── ml-1m.train.rating
+└── ml-1m.test.negative
+```
+
+`ml-1m.test.negative` の先頭列にある正例を使用するため、`ml-1m.test.rating` は不要。
+val は `ml-1m.train.rating` から各ユーザー1件を取り分けて作成する。
+
+### 3. 学習設定の準備
+
+設定例をコピーする。
+
+```bash
+cp conf/config.example.yaml conf/config.yaml
+```
+
+`conf/config.yaml` 内の対応する項目を次のように設定する。
+その他の項目は設定例のまま使用する。
+
+```yaml
+data:
+  base_dir: .
+  batch_size: 256
+  num_workers: 1
+
+output:
+  root_dir: ./outputs
+
+wandb:
+  enabled: false
+```
+
+`data.base_dir` は `data/` を含むディレクトリを指定する。
+モデルの設定は、次の学習コマンドで上書きする。
+
+W&B を利用する場合は `wandb.enabled: true` とし、`wandb.project`・`wandb.entity` を利用先に合わせて設定する。
+オンラインで記録する場合は、事前にログインする。
+
+```bash
+uv run --extra cu126 wandb login
+```
+
+### 4. モデルの学習
+
+seed 42、20 epochで、GMF・MLP・事前学習ありNeuMF・事前学習なしNeuMFを学習する。
+以下では保存先を `outputs/reproduction/` とする。
+
+まず GMF と MLP を学習する。
+
+```bash
+uv run --extra cu126 python train.py \
+  model.model_name=GMF \
+  model.use_pretrain=false \
+  hydra.run.dir=outputs/reproduction/GMF
+
+uv run --extra cu126 python train.py \
+  model.model_name=MLP \
+  model.use_pretrain=false \
+  hydra.run.dir=outputs/reproduction/MLP
+```
+
+保存された GMF・MLP のチェックポイントを使用して、事前学習ありNeuMFを学習する。
+
+```bash
+uv run --extra cu126 python train.py \
+  model.model_name=NeuMF \
+  model.use_pretrain=true \
+  model.gmf_checkpoint_path=outputs/reproduction/GMF/checkpoint.pt \
+  model.mlp_checkpoint_path=outputs/reproduction/MLP/checkpoint.pt \
+  hydra.run.dir=outputs/reproduction/NeuMF-pre
+```
+
+事前学習なしNeuMFは次のように実行する。
+
+```bash
+uv run --extra cu126 python train.py \
+  model.model_name=NeuMF \
+  model.use_pretrain=false \
+  hydra.run.dir=outputs/reproduction/NeuMF-no-pre
+```
+
+各モデルの出力先に、val の HR が最良だった `checkpoint.pt` と、実行時の設定 `.hydra/config.yaml` が保存される。
+学習終了後、そのチェックポイントを読み込んで test を評価する。
+
+### 5. 人気度の分析と再ランキング
+
+事前学習ありNeuMFの保存済みモデルと設定を使用する。
+上記の学習手順を実行した場合、必要なファイルの配置は次のようになる。
+
+```text
+outputs/reproduction/
+└── NeuMF-pre/
+    ├── checkpoint.pt
+    └── .hydra/
+        └── config.yaml
+```
+
 `--run-dir` には `NeuMF-pre/` を含むディレクトリを指定する。
 
 ```bash
-python popularity_reranking/neumf_popularity_bias.py \
-  --run-dir outputs/fixed-val-20261122-154335
+uv run --extra cu126 python popularity_reranking/neumf_popularity_bias.py \
+  --run-dir outputs/reproduction
 ```
+
+掲載結果には、既存の `outputs/fixed-val-20261122-154335` の保存済みモデルを使用した。
+そのモデルを配置して分析する場合は、`--run-dir` を同ディレクトリに変更する。
 
 データが別の場所にある場合は、`data/` を含むディレクトリを `--data-dir` で指定する。
 `--batch-size` で推論バッチサイズを変更できる（既定値8192）。
-実行時のカレントディレクトリにかかわらず、図2枚をプロジェクトの `docs/` に保存する。
-ファイル名は `popularity_bias.png` と `reranking_results.png`。集計結果は標準出力に表示し、CSV や推薦リストは別ファイルに保存しない。
 
+実行時のカレントディレクトリにかかわらず、図2枚をプロジェクトの `docs/` に保存する。
+ファイル名は `popularity_bias.png` と `reranking_results.png`。
+集計結果は標準出力に表示し、CSV や推薦リストは別ファイルに保存しない。
+
+### 構成
+
+- `conf/config.example.yaml`：学習設定のひな形。
 - `ncf_reproduction/`：NCF の再現実装。
+- `train.py`：モデルの学習と最良チェックポイントでの test 評価。
 - [popularity_reranking/reranking.py](popularity_reranking/reranking.py)：Smooth xQuAD と係数選択。
 - [popularity_reranking/neumf_popularity_bias.py](popularity_reranking/neumf_popularity_bias.py)：推論・係数選択・評価・図の保存。
 - `docs/`：README で使用する図。
-
-実行には PyTorch、NumPy、pandas、SciPy、Matplotlib、PyYAML が必要。
-既存のモデル・データ読み込みモジュールが参照する NetworkX と SymPy もインストールしておく。

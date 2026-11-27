@@ -17,6 +17,9 @@ wheels/
 .env.*
 !.env.example
 
+# Local configuration
+/conf/config.yaml
+
 
 # Python
 __pycache__/
